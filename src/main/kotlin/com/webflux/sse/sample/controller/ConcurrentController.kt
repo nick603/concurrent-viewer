@@ -1,5 +1,6 @@
 package com.webflux.sse.sample.controller
 
+import java.lang.Thread.sleep
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import org.springframework.http.MediaType
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import reactor.core.publisher.Flux
+import reactor.core.scheduler.Schedulers
 
 
 @Controller
@@ -21,16 +23,18 @@ class ConcurrentController(
         @PathVariable name: String,
     ): Flux<ServerSentEvent<Set<String>>> {
         val goodsId = id.toLong()
-        val counter = viewersMap[goodsId]
-        requireNotNull(counter) { "counter should be exist" }
 
-        return counter.sink.asFlux()
+        val viewer = viewersMap[goodsId] ?: addConcurrentViewer(goodsId)
+        viewer.also {
+            viewersMap[goodsId] = it.addViewer(name)
+        }
+
+        return viewer.sink.asFlux()
             .mergeWith(ping())
             .log()
             .doOnCancel {
                 println("### canceled !! for goodsId : $goodsId")
-                counter.also {
-                    println("### remove name for : $name")
+                viewer.also {
                     viewersMap[goodsId] = it.removeViewer(name)
                 }
             }
@@ -45,11 +49,6 @@ class ConcurrentController(
         @PathVariable id: String,
         @PathVariable name: String,
     ): String {
-        val goodsId = id.toLong()
-        val viewer = viewersMap[goodsId] ?: addConcurrentViewer(goodsId)
-        viewer.also {
-            viewersMap[goodsId] = it.addViewer(name)
-        }
         return "detail"
     }
 
