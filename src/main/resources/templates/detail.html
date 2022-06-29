@@ -30,24 +30,15 @@
 
     source = new EventSource(`/streams/${goodsId}/username/${username}`);
 
-    source.onmessage = (evt) => {
+    source.addEventListener('changes', (evt) => {
       let viewers = JSON.parse(evt.data)
-      const viewsersText = `현재 이 상품을 ${viewers}이 보고있습니다.`
+
+      console.log("viewers  : " + viewers)
+      const viewersText = `현재 이 상품을 ${viewers}이 보고있습니다.`
       let message = document.getElementById("goods-viewers")
-      message.innerText = viewsersText
-    }
-
-    source.onerror = (evt) => {
-      source.close()
-    }
-
-    console.log(source.readyState !== EventSource.CLOSED)
+      message.innerText = viewersText
+    })
   }
-
-  // window.addEventListener("beforeunload", (event) => {
-  //   event.preventDefault()
-  //   event.returnValue = ""
-  // });
 
   const init = () => {
     console.log(window.location.pathname.split('/'))

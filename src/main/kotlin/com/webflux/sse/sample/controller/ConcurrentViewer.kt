@@ -1,33 +1,36 @@
 package com.webflux.sse.sample.controller
 
+import org.springframework.http.codec.ServerSentEvent
 import reactor.core.publisher.Sinks
 
 data class ConcurrentViewer(
     val viewers: HashSet<String>,
-    val sink: Sinks.Many<Set<String>>
+    val sink: Sinks.Many<ServerSentEvent<Set<String>>>
 ) {
     fun addViewer(name: String): ConcurrentViewer {
-        val added = this.copy(viewers = viewers.apply{ this.add(name) })
-
-        println("### added : $added")
+        val added = this.copy(viewers = viewers.apply { this.add(name) })
         emitEvent(added.viewers)
         return added
     }
 
     fun removeViewer(name: String): ConcurrentViewer {
-        val removed = this.copy(viewers = viewers.apply{ this.remove(name) })
-        println("### removed : $removed")
+        val removed = this.copy(viewers = viewers.apply { this.remove(name) })
         emitEvent(removed.viewers)
         return removed
     }
 
-    private fun emitEvent(watchers: Set<String>) {
-        sink.emitNext(watchers, Sinks.EmitFailureHandler.FAIL_FAST)
+    private fun emitEvent(viewers: Set<String>) {
+        sink.emitNext(
+            ServerSentEvent.builder<Set<String>>()
+                .event("changes")
+                .data(viewers).build(),
+            Sinks.EmitFailureHandler.FAIL_FAST
+        )
     }
 
     companion object {
         fun getFirstViewer(): ConcurrentViewer {
-            val sink = Sinks.many().replay().latest<Set<String>>()
+            val sink = Sinks.many().replay().latest<ServerSentEvent<Set<String>>>()
             return ConcurrentViewer(hashSetOf(), sink)
         }
     }

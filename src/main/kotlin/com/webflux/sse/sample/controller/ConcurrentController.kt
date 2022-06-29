@@ -1,7 +1,9 @@
 package com.webflux.sse.sample.controller
 
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import org.springframework.http.MediaType
+import org.springframework.http.codec.ServerSentEvent
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -17,12 +19,13 @@ class ConcurrentController(
     fun streams(
         @PathVariable id: String,
         @PathVariable name: String,
-    ): Flux<Set<String>> {
+    ): Flux<ServerSentEvent<Set<String>>> {
         val goodsId = id.toLong()
         val counter = viewersMap[goodsId]
         requireNotNull(counter) { "counter should be exist" }
 
         return counter.sink.asFlux()
+            .mergeWith(ping())
             .log()
             .doOnCancel {
                 println("### canceled !! for goodsId : $goodsId")
@@ -32,6 +35,9 @@ class ConcurrentController(
                 }
             }
     }
+
+    private fun ping() = Flux.interval(Duration.ofSeconds(1))
+        .map { ServerSentEvent.builder<Set<String>>().event("ping").build() }
 
     // TODO : post 요청으로 변경 예정
     @GetMapping("/goods/{id}/username/{name}")
