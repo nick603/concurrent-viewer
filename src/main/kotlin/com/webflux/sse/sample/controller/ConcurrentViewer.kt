@@ -4,18 +4,18 @@ import org.springframework.http.codec.ServerSentEvent
 import reactor.core.publisher.Sinks
 
 data class ConcurrentViewer(
-    val viewers: HashSet<String>,
+    val viewers: ArrayList<String>,
     val sink: Sinks.Many<ServerSentEvent<Set<String>>>
 ) {
     fun addViewer(name: String): ConcurrentViewer {
         val added = this.copy(viewers = viewers.apply { this.add(name) })
-        emitEvent(added.viewers)
+        emitEvent(added.viewers.toSet())
         return added
     }
 
     fun removeViewer(name: String): ConcurrentViewer {
         val removed = this.copy(viewers = viewers.apply { this.remove(name) })
-        emitEvent(removed.viewers)
+        emitEvent(removed.viewers.toSet())
         return removed
     }
 
@@ -31,7 +31,7 @@ data class ConcurrentViewer(
     companion object {
         fun getFirstViewer(): ConcurrentViewer {
             val sink = Sinks.many().replay().latest<ServerSentEvent<Set<String>>>()
-            return ConcurrentViewer(hashSetOf(), sink)
+            return ConcurrentViewer(arrayListOf(), sink)
         }
     }
 }
